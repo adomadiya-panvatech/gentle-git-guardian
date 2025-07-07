@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-const API_URL = 'http://localhost:5000/api/dynamic-links';
+const API_URL = 'http://localhost:3000/api/dynamic-links';
 
 export const getDynamicLink = async (data: any, token: string) =>
   (await axios.post(API_URL, data, { headers: { Authorization: `Bearer ${token}` } })).data;

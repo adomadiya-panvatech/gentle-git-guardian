@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-const API_URL = 'http://localhost:5000/api/audio-files';
+const API_URL = 'http://localhost:3000/api/audio-files';
 
 export const getAudioFiles = async (token: string) =>
   (await axios.get(API_URL, { headers: { Authorization: `Bearer ${token}` } })).data;

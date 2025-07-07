@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-const API_URL = 'http://localhost:5000/api/companies';
+const API_URL = 'http://localhost:3000/api/companies';
 
 export const getCompanies = async (token: string) =>
   (await axios.get(API_URL, { headers: { Authorization: `Bearer ${token}` } })).data;

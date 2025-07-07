@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-const API_URL = 'http://localhost:5000/api/dynamic-sets';
+const API_URL = 'http://localhost:3000/api/dynamic-sets';
 
 export const getDynamicSetByTag = async (tag: string, token: string) =>
   (await axios.get(`${API_URL}/${tag}`, { headers: { Authorization: `Bearer ${token}` } })).data;

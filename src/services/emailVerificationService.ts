@@ -1,5 +1,6 @@
+
 import axios from 'axios';
-const API_URL = 'http://localhost:5000/api/email-verification';
+const API_URL = 'http://localhost:3000/api/email-verification';
 
 export const verifyEmail = async (data: any) =>
   (await axios.post(API_URL, data)).data;
