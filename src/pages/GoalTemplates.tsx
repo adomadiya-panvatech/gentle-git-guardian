@@ -1,77 +1,55 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
 import GoalTemplateForm from '../components/Content/GoalTemplateForm';
 import { Search, Star, Eye, Copy, Trash2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/use-toast';
+import * as goalTemplateService from '../services/goalTemplateService';
 
 const GoalTemplates = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [activeTab, setActiveTab] = useState('available');
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const itemsPerPage = 10;
 
-  const mockTemplates = [
-    {
-      id: 1,
-      image: '/lovable-uploads/50965e3a-b9ef-4d7c-a90e-53cbd6a5a519.png',
-      name: 'Ask someone how they are doing',
-      shortDescription: 'Connect with others by asking about their wellbeing',
-      longDescription: '<p>This is a simple yet powerful way to show you care about others. Taking time to genuinely ask someone how they are doing can make a significant difference in their day and strengthen your relationships.</p><ul><li>Shows genuine interest</li><li>Builds stronger connections</li><li>Creates opportunities for deeper conversations</li></ul>',
-      activities: 0,
-      taxonomies: 3,
-      isPrivate: false,
-      searchTags: ['social', 'connection', 'empathy']
-    },
-    {
-      id: 2,
-      image: '/lovable-uploads/ff5af5ed-03b1-4a14-8fbc-397ea41a6aef.png',
-      name: 'Bake',
-      shortDescription: 'Create delicious treats through baking',
-      longDescription: '<p>Baking is a wonderful way to express creativity while creating something delicious. Whether you\'re making bread, cookies, or cakes, baking can be both therapeutic and rewarding.</p><h3>Benefits of Baking:</h3><ul><li>Stress relief</li><li>Creative expression</li><li>Sharing with others</li></ul>',
-      activities: 0,
-      taxonomies: 3,
-      isPrivate: false,
-      searchTags: ['cooking', 'creativity', 'food']
-    },
-    {
-      id: 3,
-      image: '/lovable-uploads/7565766c-680c-4874-98d2-9ff6a0973755.png',
-      name: 'Clean my dishes',
-      activities: 0,
-      taxonomies: 4,
-      isPrivate: false
-    },
-    {
-      id: 4,
-      name: 'Connect on Wellness Community',
-      activities: 0,
-      taxonomies: 4,
-      isPrivate: false
-    },
-    {
-      id: 5,
-      name: 'Cook at home',
-      activities: 0,
-      taxonomies: 4,
-      isPrivate: false
-    },
-    {
-      id: 6,
-      name: 'CrossFit',
-      activities: 0,
-      taxonomies: 5,
-      isPrivate: false
-    },
-    {
-      id: 7,
-      name: 'Cycle',
-      activities: 0,
-      taxonomies: 5,
-      isPrivate: false
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const token = localStorage.getItem('token');
+
+  const fetchTemplates = async (page = 1) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await goalTemplateService.getGoalTemplates(token, page, itemsPerPage);
+      console.log('Goal templates response:', response);
+      setTemplates(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching goal templates:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch goal templates",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchTemplates(currentPage);
+  }, [currentPage, token]);
 
   const handleEdit = (template: any) => {
     console.log('Editing template:', template);
@@ -89,6 +67,15 @@ const GoalTemplates = () => {
     setEditingTemplate(null);
     setIsFormOpen(true);
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const filteredTemplates = templates.filter(template =>
+    template.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    template.title?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -111,6 +98,8 @@ const GoalTemplates = () => {
           <Input
             placeholder="Search templates..."
             className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
@@ -135,70 +124,120 @@ const GoalTemplates = () => {
         <TabsContent value="available" className="mt-6">
           <Card className="border-gray-200">
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-gray-200">
-                    <TableHead className="font-semibold text-gray-900">Image</TableHead>
-                    <TableHead className="font-semibold text-gray-900">
-                      <div className="flex items-center gap-1">
-                        Name
-                        <span className="text-gray-400">▲</span>
-                      </div>
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-900">Activities</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Taxonomies</TableHead>
-                    <TableHead className="font-semibold text-gray-900">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockTemplates.map((template) => (
-                    <TableRow key={template.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <TableCell>
-                        {template.image && (
-                          <img 
-                            src={template.image} 
-                            alt={template.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span 
-                          className="text-blue-600 hover:underline cursor-pointer"
-                          onClick={() => handleView(template)}
-                        >
-                          {template.name}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {template.activities}
-                          <Search className="w-4 h-4 text-gray-400" />
-                          <Star className="w-4 h-4 text-gray-400" />
-                        </div>
-                      </TableCell>
-                      <TableCell>{template.taxonomies}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleEdit(template)}
-                            className="p-1 hover:bg-gray-100 rounded"
-                            title="Edit"
-                          >
-                            <Eye className="w-4 h-4 text-gray-500" />
-                          </button>
-                          <button className="p-1 hover:bg-gray-100 rounded">
-                            <span className="text-gray-500 font-mono">ID</span>
-                          </button>
-                          <button className="p-1 hover:bg-gray-100 rounded">
-                            <Trash2 className="w-4 h-4 text-gray-500" />
-                          </button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {loading ? (
+                <div className="p-8 text-center">Loading goal templates...</div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b border-gray-200">
+                        <TableHead className="font-semibold text-gray-900">Image</TableHead>
+                        <TableHead className="font-semibold text-gray-900">
+                          <div className="flex items-center gap-1">
+                            Name
+                            <span className="text-gray-400">▲</span>
+                          </div>
+                        </TableHead>
+                        <TableHead className="font-semibold text-gray-900">Activities</TableHead>
+                        <TableHead className="font-semibold text-gray-900">Taxonomies</TableHead>
+                        <TableHead className="font-semibold text-gray-900">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTemplates.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-gray-500">
+                            No goal templates found. Click "Add Goal Template" to create your first template.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredTemplates.map((template) => (
+                          <TableRow key={template.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <TableCell>
+                              {template.image && (
+                                <img 
+                                  src={template.image} 
+                                  alt={template.name || template.title}
+                                  className="w-12 h-12 rounded-full object-cover"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span 
+                                className="text-blue-600 hover:underline cursor-pointer"
+                                onClick={() => handleView(template)}
+                              >
+                                {template.name || template.title}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {template.activities || 0}
+                                <Search className="w-4 h-4 text-gray-400" />
+                                <Star className="w-4 h-4 text-gray-400" />
+                              </div>
+                            </TableCell>
+                            <TableCell>{template.taxonomies || 0}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => handleEdit(template)}
+                                  className="p-1 hover:bg-gray-100 rounded"
+                                  title="Edit"
+                                >
+                                  <Eye className="w-4 h-4 text-gray-500" />
+                                </button>
+                                <button className="p-1 hover:bg-gray-100 rounded">
+                                  <span className="text-gray-500 font-mono">ID</span>
+                                </button>
+                                <button className="p-1 hover:bg-gray-100 rounded">
+                                  <Trash2 className="w-4 h-4 text-gray-500" />
+                                </button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="p-4 border-t">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                              className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                          {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                            const page = i + 1;
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  onClick={() => handlePageChange(page)}
+                                  isActive={currentPage === page}
+                                  className="cursor-pointer"
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          })}
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
