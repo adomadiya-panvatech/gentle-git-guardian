@@ -42,32 +42,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeUser('user');
       }
     }
     setLoading(false);
   }, []);
-
-  // const login = async (email: string, password: string) => {
-  //   try {
-  //     const response = await authService.login(email, password);
-  //     const { token, user: userData } = response;
-
-  //     localStorage.setItem('token', token);
-  //     localStorage.setItem('user', JSON.stringify(userData));
-  //     setUser(userData);
-  //   } catch (error) {
-  //     console.error('Login error:', error);
-  //     throw error;
-  //   }
-  // };
 
   const login = async (email: string, password: string) => {
     try {
       
       if (email === 'admin@tovi.com' && password === 'admin123') {
         const userData = {
-          id: 1,
+          id: '1',
           name: 'Admin User',
           email: 'admin@tovi.com',
           role: 'admin',
@@ -87,7 +73,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     }
   };
-
 
   const register = async (email: string, password: string, name: string) => {
     try {
