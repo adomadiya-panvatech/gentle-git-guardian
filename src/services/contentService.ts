@@ -17,3 +17,6 @@ export const createContent = async (content: any, token: string) =>
 
 export const updateContent = async (id: string, content: any, token: string) =>
   (await axios.put(`${API_URL}/${id}`, content, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const deleteContent = async (id: string, token: string) =>
+  (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
