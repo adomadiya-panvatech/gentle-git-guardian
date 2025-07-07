@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '../components/ui/pagination';
 import { Search, Plus, Link as LinkIcon, Eye, Edit3 } from 'lucide-react';
 import TipForm from '../components/Content/TipForm';
 import ArticleForm from '../components/Content/ArticleForm';
 import HTMLCardForm from '../components/Content/HTMLCardForm';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/use-toast';
+import * as tipService from '../services/tipService';
+import * as contentService from '../services/contentService';
 
 const ContentLibrary = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -16,6 +22,16 @@ const ContentLibrary = () => {
   const [showArticleForm, setShowArticleForm] = useState(false);
   const [showHTMLCardForm, setShowHTMLCardForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [tips, setTips] = useState<any[]>([]);
+  const [content, setContent] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const token = localStorage.getItem('token');
 
   const contentTypes = [
     { id: 'all', label: 'All', color: 'bg-gray-100 text-gray-800' },
@@ -26,50 +42,65 @@ const ContentLibrary = () => {
     { id: 'html-card', label: 'HTML Card', color: 'bg-pink-100 text-pink-800' },
   ];
 
-  const contentItems = [
-    {
-      id: 1,
-      type: 'html',
-      title: 'WD-40 Challenge Report Card - New Super Target!',
-      status: 'Approved',
-      updated: '2022/11/18',
-      views: 0,
-      from: ''
-    },
-    {
-      id: 2,
-      type: 'article',
-      title: 'Kelley Marie 5-Day Healthy Reset Program Guide',
-      status: 'Approved',
-      updated: '2022/11/18',
-      views: 0,
-      from: 'drive.google.com'
-    },
-    {
-      id: 3,
-      type: 'article',
-      title: '4 Simple Steps to Take to Boost Your Longevity Later in Life',
-      status: 'Approved',
-      updated: '2022/11/16',
-      views: 0,
-      from: 'www.verywellhealth.com'
-    },
-    {
-      id: 4,
-      type: 'Wellness',
-      title: 'Movement + Stress',
-      status: 'Approved',
-      updated: '2022/11/16',
-      views: 0,
-      from: ''
+  const fetchTips = async (page = 1) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await tipService.getTips(token);
+      setTips(response.data || response);
+    } catch (error) {
+      console.error('Error fetching tips:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch tips",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const fetchContent = async (page = 1) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await contentService.getContent(token);
+      setContent(response.data || response);
+    } catch (error) {
+      console.error('Error fetching content:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch content",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTips(currentPage);
+    fetchContent(currentPage);
+  }, [currentPage, token]);
+
+  // Combine all content items
+  const allContentItems = [
+    ...tips.map(tip => ({ ...tip, type: 'tip' })),
+    ...content.map(item => ({ ...item, type: 'article' }))
   ];
 
-  const filteredContent = contentItems.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredContent = allContentItems.filter(item => {
+    const matchesSearch = (item.title || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || item.type === selectedType;
     return matchesSearch && matchesType;
   });
+
+  // Calculate pagination for filtered content
+  const paginatedContent = filteredContent.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  const calculatedTotalPages = Math.ceil(filteredContent.length / itemsPerPage);
 
   const handleEdit = (item: any) => {
     setEditingItem(item);
@@ -100,6 +131,10 @@ const ContentLibrary = () => {
   const handleAddHTMLCard = () => {
     setEditingItem(null);
     setShowHTMLCardForm(true);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -200,64 +235,112 @@ const ContentLibrary = () => {
       {/* Content Table */}
       <Card className="border-gray-200">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="text-left p-4 font-medium text-gray-900">Actions</th>
-                  <th className="text-left p-4 font-medium text-gray-900">Type</th>
-                  <th className="text-left p-4 font-medium text-gray-900">Title</th>
-                  <th className="text-left p-4 font-medium text-gray-900">Status</th>
-                  <th className="text-left p-4 font-medium text-gray-900">Updated</th>
-                  <th className="text-left p-4 font-medium text-gray-900">From</th>
-                  <th className="text-left p-4 font-medium text-gray-900">Views</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredContent.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="p-4">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                          <LinkIcon className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleView(item)}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-8 w-8 p-0"
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge className="bg-gray-100 text-gray-800">
-                        {item.type.toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-blue-600 font-medium">{item.title}</td>
-                    <td className="p-4">
-                      <Badge className="bg-green-100 text-green-800">
-                        {item.status}
-                      </Badge>
-                    </td>
-                    <td className="p-4 text-gray-600">{item.updated}</td>
-                    <td className="p-4 text-blue-600">{item.from}</td>
-                    <td className="p-4 text-gray-600">{item.views}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {loading ? (
+            <div className="p-8 text-center">Loading content...</div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="border-b border-gray-200 bg-gray-50">
+                    <tr>
+                      <th className="text-left p-4 font-medium text-gray-900">Actions</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Type</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Title</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Status</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Updated</th>
+                      <th className="text-left p-4 font-medium text-gray-900">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {paginatedContent.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center text-gray-500">
+                          No content found
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedContent.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="p-4">
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <LinkIcon className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleView(item)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-8 w-8 p-0"
+                                onClick={() => handleEdit(item)}
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <Badge className="bg-gray-100 text-gray-800">
+                              {item.type.toUpperCase()}
+                            </Badge>
+                          </td>
+                          <td className="p-4 text-blue-600 font-medium">{item.title || 'Untitled'}</td>
+                          <td className="p-4">
+                            <Badge className="bg-green-100 text-green-800">
+                              {item.status || 'Published'}
+                            </Badge>
+                          </td>
+                          <td className="p-4 text-gray-600">{item.updated_at || item.created_at || 'Unknown'}</td>
+                          <td className="p-4 text-gray-600">{item.views || 0}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {calculatedTotalPages > 1 && (
+                <div className="p-4 border-t">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      {[...Array(Math.min(5, calculatedTotalPages))].map((_, i) => {
+                        const page = i + 1;
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => handlePageChange(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => currentPage < calculatedTotalPages && handlePageChange(currentPage + 1)}
+                          className={currentPage === calculatedTotalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
