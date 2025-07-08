@@ -1,17 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Search, Plus, Eye, Edit3, Link as LinkIcon } from 'lucide-react';
+import { Search, Plus, Eye, Edit3, Link as LinkIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import ContentCollectionForm from '../components/Content/ContentCollectionForm';
+import { useAuth } from '../context/AuthContext';
+import { contentCollectionService } from '../services/contentCollectionService';
+import { useToast } from '../hooks/use-toast';
 
 const ContentCollections = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
+  const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
 
-  const collections = [
+  useEffect(() => {
+    fetchCollections();
+  }, [currentPage, token]);
+
+  const fetchCollections = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await contentCollectionService.getContentCollections(token);
+      setCollections(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching content collections:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load content collections",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mockCollections = [
     {
       id: 1,
       name: "'Tis the Season",
@@ -74,7 +107,7 @@ const ContentCollections = () => {
     }
   ];
 
-  const filteredCollections = collections.filter(collection =>
+  const filteredCollections = (collections.length > 0 ? collections : mockCollections).filter(collection =>
     collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     collection.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -140,7 +173,20 @@ const ContentCollections = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredCollections.map((collection) => (
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-gray-500">
+                      Loading collections...
+                    </td>
+                  </tr>
+                ) : filteredCollections.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-gray-500">
+                      No collections found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCollections.map((collection) => (
                   <tr key={collection.id} className="hover:bg-gray-50">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -185,12 +231,38 @@ const ContentCollections = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <ContentCollectionForm

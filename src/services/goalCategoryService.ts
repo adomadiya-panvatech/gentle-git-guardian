@@ -23,3 +23,11 @@ export const updateGoalCategory = async (id: string, category: any, token: strin
 
 export const deleteGoalCategory = async (id: string, token: string) =>
   (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const goalCategoryService = {
+  getGoalCategories,
+  getGoalCategory,
+  createGoalCategory,
+  updateGoalCategory,
+  deleteGoalCategory
+};

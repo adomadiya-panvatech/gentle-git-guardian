@@ -12,4 +12,11 @@ export const updateContentCollection = async (id: string, collection: any, token
   (await axios.patch(`${API_URL}/${id}`, collection, { headers: { Authorization: `Bearer ${token}` } })).data;
 
 export const deleteContentCollection = async (id: string, token: string) =>
-  (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data; 
+  (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const contentCollectionService = {
+  getContentCollections,
+  createContentCollection,
+  updateContentCollection,
+  deleteContentCollection
+};

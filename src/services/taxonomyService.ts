@@ -2,8 +2,15 @@
 import axios from 'axios';
 const API_URL = 'http://localhost:3000/api/taxonomies';
 
-export const getTaxonomies = async (token: string) =>
-  (await axios.get(API_URL, { headers: { Authorization: `Bearer ${token}` } })).data;
+export const getTaxonomies = async (token: string, page?: number, limit?: number) => {
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  
+  return (await axios.get(`${API_URL}?${params}`, { 
+    headers: { Authorization: `Bearer ${token}` } 
+  })).data;
+};
 
 export const getTaxonomy = async (id: string, token: string) =>
   (await axios.get(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;

@@ -12,4 +12,11 @@ export const updateCompany = async (id: string, company: any, token: string) =>
   (await axios.patch(`${API_URL}/${id}`, company, { headers: { Authorization: `Bearer ${token}` } })).data;
 
 export const deleteCompany = async (id: string, token: string) =>
-  (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data; 
+  (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const companyService = {
+  getCompanies,
+  createCompany,
+  updateCompany,
+  deleteCompany
+};

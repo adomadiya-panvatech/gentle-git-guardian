@@ -23,3 +23,11 @@ export const updateAssignment = async (id: string, assignment: any, token: strin
 
 export const deleteAssignment = async (id: string, token: string) =>
   (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const assignmentService = {
+  getAssignments,
+  getAssignment,
+  createAssignment,
+  updateAssignment,
+  deleteAssignment
+};

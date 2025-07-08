@@ -1,17 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Checkbox } from '../components/ui/checkbox';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import NewGuidanceRuleDialog from '../components/GuidanceRules/NewGuidanceRuleDialog';
 import EditGuidanceRuleDialog from '../components/GuidanceRules/EditGuidanceRuleDialog';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/use-toast';
 
 const GuidanceRules = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [hideExpired, setHideExpired] = useState(true);
   const [showNewRuleDialog, setShowNewRuleDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedRule, setSelectedRule] = useState(null);
+  const [rules, setRules] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchRules();
+  }, [currentPage, token]);
+
+  const fetchRules = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:3000/api/guidance-rules?page=${currentPage}&limit=${itemsPerPage}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setRules(data.data || data);
+      setTotalPages(Math.ceil((data.total || data.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching guidance rules:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load guidance rules",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mockRules = [
     { id: 1, name: '9 to 5_content', updated: '2022.03.02', state: 'Active', conditions: 1, actions: 1 },
@@ -92,7 +128,13 @@ const GuidanceRules = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockRules.map((rule) => (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="p-8 text-center text-gray-500">
+                        Loading guidance rules...
+                      </TableCell>
+                    </TableRow>
+                  ) : (rules.length > 0 ? rules : mockRules).map((rule) => (
                     <TableRow key={rule.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <TableCell>
                         <span 
@@ -151,7 +193,32 @@ const GuidanceRules = () => {
         </TabsContent>
       </Tabs>
 
-      <NewGuidanceRuleDialog 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      <NewGuidanceRuleDialog
         open={showNewRuleDialog} 
         onOpenChange={setShowNewRuleDialog}
       />

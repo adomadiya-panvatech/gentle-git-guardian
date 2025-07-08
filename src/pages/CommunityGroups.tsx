@@ -1,14 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { Upload } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { communityGroupService } from '../services/communityGroupService';
+import { useToast } from '../hooks/use-toast';
 
 const CommunityGroups = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -17,6 +22,34 @@ const CommunityGroups = () => {
     slackChannelId: '',
     image: null
   });
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchGroups();
+  }, [currentPage, token]);
+
+  const fetchGroups = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await communityGroupService.getCommunityGroups(token, currentPage, itemsPerPage);
+      setGroups(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching community groups:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load community groups",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mockGroups = [
     { 
@@ -110,7 +143,13 @@ const CommunityGroups = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockGroups.map((group) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="p-8 text-center text-gray-500">
+                    Loading community groups...
+                  </TableCell>
+                </TableRow>
+              ) : (groups.length > 0 ? groups : mockGroups).map((group) => (
                 <TableRow key={group.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <TableCell>
                     <img 
@@ -130,6 +169,31 @@ const CommunityGroups = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent className="max-w-2xl">

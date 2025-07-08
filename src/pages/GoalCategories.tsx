@@ -1,15 +1,48 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Input } from '../components/ui/input';
 import GoalCategoryForm from '../components/Content/GoalCategoryForm';
-import { Search, Edit, Trash2 } from 'lucide-react';
+import { Search, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { goalCategoryService } from '../services/goalCategoryService';
+import { useToast } from '../hooks/use-toast';
 
 const GoalCategories = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchCategories();
+  }, [currentPage, token]);
+
+  const fetchCategories = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await goalCategoryService.getGoalCategories(token, currentPage, itemsPerPage);
+      setCategories(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching goal categories:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load goal categories",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mockCategories = [
     {
@@ -121,7 +154,13 @@ const GoalCategories = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCategories.map((category) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="p-8 text-center text-gray-500">
+                    Loading categories...
+                  </TableCell>
+                </TableRow>
+              ) : (categories.length > 0 ? categories : mockCategories).map((category) => (
                 <TableRow key={category.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <TableCell>
                     <button className="w-6 h-6 border border-gray-300 rounded flex items-center justify-center hover:bg-gray-100">
@@ -159,6 +198,31 @@ const GoalCategories = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       <GoalCategoryForm
         isOpen={isFormOpen}

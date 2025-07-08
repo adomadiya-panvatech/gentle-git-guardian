@@ -27,3 +27,12 @@ export const deleteUser = async (id: string, token: string) =>
 
 export const banUser = async (id: string, token: string) =>
   (await axios.put(`/api/users/${id}/ban`, {}, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const userService = {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  banUser
+};

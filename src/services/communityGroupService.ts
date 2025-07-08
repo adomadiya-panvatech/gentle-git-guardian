@@ -23,3 +23,11 @@ export const updateCommunityGroup = async (id: string, group: any, token: string
 
 export const deleteCommunityGroup = async (id: string, token: string) =>
   (await axios.delete(`${API_URL}/${id}`, { headers: { Authorization: `Bearer ${token}` } })).data;
+
+export const communityGroupService = {
+  getCommunityGroups,
+  getCommunityGroup,
+  createCommunityGroup,
+  updateCommunityGroup,
+  deleteCommunityGroup
+};

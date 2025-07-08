@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -7,13 +7,46 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Checkbox } from '../components/ui/checkbox';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { companyService } from '../services/companyService';
+import { useToast } from '../hooks/use-toast';
 
 const Companies = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [companyCode, setCompanyCode] = useState('');
   const [statsReport, setStatsReport] = useState(false);
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [currentPage, token]);
+
+  const fetchCompanies = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await companyService.getCompanies(token);
+      setCompanies(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load companies",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mockCompanies = [
     { name: 'A/B Test: Dynamic Home onboarding', created: '2021/05/20' },
@@ -73,7 +106,13 @@ const Companies = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockCompanies.map((company, index) => (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="p-8 text-center text-gray-500">
+                    Loading companies...
+                  </TableCell>
+                </TableRow>
+              ) : (companies.length > 0 ? companies : mockCompanies).map((company, index) => (
                 <TableRow key={index} className="border-b border-gray-100 hover:bg-gray-50">
                   <TableCell className="font-medium">{company.name}</TableCell>
                   <TableCell className="text-gray-600">{company.created}</TableCell>
@@ -83,6 +122,31 @@ const Companies = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
         <DialogContent className="sm:max-w-[500px]">

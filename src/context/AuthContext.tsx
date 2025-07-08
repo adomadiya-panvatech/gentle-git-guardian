@@ -12,6 +12,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
@@ -30,19 +31,21 @@ export const useAuth = (): AuthContextType => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
 
-    if (token && userData) {
+    if (storedToken && userData) {
       try {
         setUser(JSON.parse(userData));
+        setToken(storedToken);
       } catch (error) {
         console.error('Error parsing user data:', error);
         localStorage.removeItem('token');
-        localStorage.removeUser('user');
+        localStorage.removeItem('user');
       }
     }
     setLoading(false);
@@ -64,6 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.setItem('token', fakeToken);
         localStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
+        setToken(fakeToken);
       } else {
         throw new Error('Invalid credentials');
       }
@@ -88,10 +92,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setToken(null);
   };
 
   const value: AuthContextType = {
     user,
+    token,
     login,
     register,
     logout,

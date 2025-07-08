@@ -1,13 +1,47 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Checkbox } from '../components/ui/checkbox';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { assignmentService } from '../services/assignmentService';
+import { useToast } from '../hooks/use-toast';
 
 const Assignments = () => {
+  const { token } = useAuth();
+  const { toast } = useToast();
   const [showCardPreviews, setShowCardPreviews] = useState(false);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [currentPage, token]);
+
+  const fetchAssignments = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await assignmentService.getAssignments(token, currentPage, itemsPerPage);
+      setAssignments(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load assignments",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const mockAssignments = [
     { 
@@ -114,7 +148,13 @@ const Assignments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockAssignments.map((assignment, index) => (
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="p-8 text-center text-gray-500">
+                        Loading assignments...
+                      </TableCell>
+                    </TableRow>
+                  ) : (assignments.length > 0 ? assignments : mockAssignments).map((assignment, index) => (
                     <TableRow key={index} className="border-b border-gray-100 hover:bg-gray-50">
                       <TableCell className="text-blue-600">{assignment.user}</TableCell>
                       <TableCell>{assignment.type}</TableCell>
@@ -174,6 +214,31 @@ const Assignments = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

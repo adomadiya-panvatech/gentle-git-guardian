@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import * as userService from '../../services/userService';
+import { userService } from '../../services/userService';
 import UserForm from './UserForm';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -11,16 +11,20 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Trash2, Edit, UserX, Search, Plus } from 'lucide-react';
+import { Trash2, Edit, UserX, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../../hooks/use-toast';
 
 const UserList = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<any[]>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 10;
 
   // const fetchUsers = () => {
   //   if (user) {
@@ -28,12 +32,22 @@ const UserList = () => {
   //   }
   // };
 
-  const fetchUsers = () => {
-    if (user) {
-      // Commenting out real API call
-      // userService.getUsers(localStorage.getItem('token')!).then(setUsers);
-
-      // Injecting mock/fake user data
+  const fetchUsers = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await userService.getUsers(token, currentPage, itemsPerPage);
+      setUsers(response.data || response);
+      setTotalPages(Math.ceil((response.total || response.length) / itemsPerPage));
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      });
+      
+      // Fallback to mock data
       const fakeUsers = [
         {
           id: '1',
@@ -58,12 +72,14 @@ const UserList = () => {
         },
       ];
       setUsers(fakeUsers);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchUsers();
-  }, [user]);
+  }, [currentPage, token]);
 
   // const handleDelete = async (id: string) => {
   //   try {
@@ -323,6 +339,31 @@ const UserList = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
